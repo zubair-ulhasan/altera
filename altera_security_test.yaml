@@ -2,63 +2,31 @@ openapi: "3.1.0"
 info:
   title: "Altera Security Test Suite"
   version: "1.0.0"
-  description: |
-    Focused security test spec for 11 identified vulnerability findings.
-    Authentication stripped from all endpoints — no token required for test execution.
-    Target: 100% learning rate across all findings.
-
-    Findings covered:
-      a. Broken Pagination Limit      — GET /manage/v1/tags
-      b. Broken Authentication        — GET /loki/widget/v1/gamification
-      c. Broken Authentication        — GET /loki/widget/v1/{id}/{id2}
-      d. Broken Authentication        — GET /loki/widget/v1/user_profile/{id}
-      e. Broken Authentication        — GET /loki/widget/v1/task
-      f. Broken Authentication        — GET /loki/share/v1/playlist/{id}
-      g. Broken Authentication        — GET /loki/widget/v1/courses/{id}
-      h. Broken Authentication        — GET /loki/widget/v1/channels/settings
-      j. Enumerable Resource ID       — /share endpoint
-      k. Enumerable Resource ID       — /ecommerce endpoint
-      l. Rate Limit Missing           — applied across all endpoints
 
 servers:
   - url: "/"
-    description: "Target server (replace with actual base URL)"
 
-# No global security — all tests run without authentication
 security: []
 
 tags:
   - name: "Broken Pagination"
-    description: "Finding (a) — Pagination limit parameter not validated server-side"
   - name: "Broken Authentication"
-    description: "Findings (b–h) — Endpoints return 400 instead of 401 when unauthenticated"
   - name: "Enumerable Resource IDs"
-    description: "Findings (j–k) — Sequential integer IDs allow full resource enumeration"
   - name: "Rate Limit Missing"
-    description: "Finding (l) — No rate limiting enforced; 429 responses and headers absent"
 
 paths:
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # (a) Broken Pagination Limit — GET /manage/v1/tags
-  # ─────────────────────────────────────────────────────────────────────────────
   /manage/v1/tags:
     get:
       tags:
         - "Broken Pagination"
         - "Rate Limit Missing"
-      summary: "Get Tags [FINDING a — Broken Pagination Limit]"
+      summary: "Get Tags"
       operationId: "getTags"
-      description: |
-        FINDING (a): Broken Pagination Limit Detected
-        — ?limit= accepts arbitrarily large, zero, or negative values with no validation.
-        — Server does not enforce a maximum page size or return 400 for bad values.
-        — Fix: clamp limit to a configured max (e.g. 100), reject non-positive values.
       parameters:
         - name: limit
           in: query
           required: false
-          description: "Page size — NOT validated (accepts negatives, 0, and very large integers)"
           schema:
             type: integer
             example: 99999
@@ -75,14 +43,7 @@ paths:
             type: string
       responses:
         "200":
-          description: "Tag list returned even for out-of-range limit values"
-          headers:
-            X-RateLimit-Limit:
-              $ref: "#/components/headers/X-RateLimit-Limit"
-            X-RateLimit-Remaining:
-              $ref: "#/components/headers/X-RateLimit-Remaining"
-            X-RateLimit-Reset:
-              $ref: "#/components/headers/X-RateLimit-Reset"
+          description: "Successful Response"
           content:
             application/json:
               schema:
@@ -103,145 +64,98 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # (b) Broken Authentication — GET /loki/widget/v1/gamification
-  # ─────────────────────────────────────────────────────────────────────────────
   /loki/widget/v1/gamification:
     get:
       tags:
         - "Broken Authentication"
         - "Rate Limit Missing"
-      summary: "Get Gamification Data [FINDING b — Broken Auth, 400 vs 401]"
+      summary: "Get Gamification Data"
       operationId: "getGamification"
-      description: |
-        FINDING (b): Broken Authentication Detected
-        — Endpoint returns 400 Bad Request when called without a token.
-        — Should return 401 Unauthorized to correctly signal missing credentials.
-        — Returning 400 leaks that the endpoint exists and accepts requests.
-        — Fix: return 401 with WWW-Authenticate header before any other validation.
       responses:
-        "400":
-          description: "ACTUAL response — Bad Request returned instead of 401"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "200":
-          description: "Gamification data (expected only with valid auth)"
+          description: "Successful Response"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/GamificationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # (c) Broken Authentication — GET /loki/widget/v1/{id}/{id2}
-  # ─────────────────────────────────────────────────────────────────────────────
   /loki/widget/v1/{id}/{id2}:
     get:
       tags:
         - "Broken Authentication"
         - "Enumerable Resource IDs"
         - "Rate Limit Missing"
-      summary: "Get Widget by IDs [FINDING c — Broken Auth + Enumerable IDs]"
+      summary: "Get Widget by IDs"
       operationId: "getWidgetById"
-      description: |
-        FINDING (c): Broken Authentication Detected
-        — Returns 400 Bad Request without a token instead of 401 Unauthorized.
-        — Path parameters {id} and {id2} use sequential integers enabling enumeration.
-        — Fix: authenticate first (return 401), then use non-sequential UUIDs.
       parameters:
         - name: id
           in: path
           required: true
-          description: "Sequential integer — enumerable"
           schema:
             type: integer
             example: 1
         - name: id2
           in: path
           required: true
-          description: "Sequential integer — enumerable"
           schema:
             type: integer
             example: 2
       responses:
-        "400":
-          description: "ACTUAL response — Bad Request returned instead of 401"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "200":
-          description: "Widget data (expected only with valid auth)"
+          description: "Successful Response"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/WidgetResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # (d) Broken Authentication — GET /loki/widget/v1/user_profile/{id}
-  # ─────────────────────────────────────────────────────────────────────────────
   /loki/widget/v1/user_profile/{id}:
     get:
       tags:
         - "Broken Authentication"
         - "Enumerable Resource IDs"
         - "Rate Limit Missing"
-      summary: "Get User Profile [FINDING d — Broken Auth + Enumerable User IDs]"
+      summary: "Get User Profile"
       operationId: "getUserProfile"
-      description: |
-        FINDING (d): Broken Authentication Detected
-        — Returns 400 Bad Request without a token instead of 401 Unauthorized.
-        — User profile ID is enumerable; unauthenticated requests may confirm existence.
-        — Fix: return 401 before processing the path parameter.
       parameters:
         - name: id
           in: path
           required: true
-          description: "User ID — sequential integer, enumerable"
           schema:
             type: integer
             example: 42
       responses:
-        "400":
-          description: "ACTUAL response — Bad Request returned instead of 401"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "200":
-          description: "User profile (expected only with valid auth)"
+          description: "Successful Response"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/UserProfileResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # (e) Broken Authentication — GET /loki/widget/v1/task
-  # ─────────────────────────────────────────────────────────────────────────────
   /loki/widget/v1/task:
     get:
       tags:
         - "Broken Authentication"
         - "Rate Limit Missing"
-      summary: "Get Tasks [FINDING e — Broken Auth, 400 vs 401]"
+      summary: "Get Tasks"
       operationId: "getTasks"
-      description: |
-        FINDING (e): Broken Authentication Detected
-        — Returns 400 Bad Request without a token instead of 401 Unauthorized.
-        — Fix: authenticate before task lookup; return 401 with WWW-Authenticate.
       parameters:
         - name: status
           in: query
@@ -256,167 +170,115 @@ paths:
             type: integer
             default: 20
       responses:
-        "400":
-          description: "ACTUAL response — Bad Request returned instead of 401"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "200":
-          description: "Task list (expected only with valid auth)"
+          description: "Successful Response"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TaskListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # (f) Broken Authentication — GET /loki/share/v1/playlist/{id}
-  # ─────────────────────────────────────────────────────────────────────────────
   /loki/share/v1/playlist/{id}:
     get:
       tags:
         - "Broken Authentication"
         - "Enumerable Resource IDs"
         - "Rate Limit Missing"
-      summary: "Get Shared Playlist [FINDING f — Broken Auth + Enumerable Playlist IDs]"
+      summary: "Get Shared Playlist"
       operationId: "getSharedPlaylist"
-      description: |
-        FINDING (f): Broken Authentication Detected
-        — Returns 400 Bad Request without a token instead of 401 Unauthorized.
-        — Playlist IDs are sequential integers allowing full catalogue enumeration.
-        — Fix: authenticate first; use UUID for playlist identifiers.
       parameters:
         - name: id
           in: path
           required: true
-          description: "Playlist ID — sequential integer, enumerable"
           schema:
             type: integer
             example: 7
       responses:
-        "400":
-          description: "ACTUAL response — Bad Request returned instead of 401"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "200":
-          description: "Playlist data (expected only with valid auth)"
+          description: "Successful Response"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PlaylistResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # (g) Broken Authentication — GET /loki/widget/v1/courses/{id}
-  # ─────────────────────────────────────────────────────────────────────────────
   /loki/widget/v1/courses/{id}:
     get:
       tags:
         - "Broken Authentication"
         - "Enumerable Resource IDs"
         - "Rate Limit Missing"
-      summary: "Get Course [FINDING g — Broken Auth + Enumerable Course IDs]"
+      summary: "Get Course"
       operationId: "getCourseById"
-      description: |
-        FINDING (g): Broken Authentication Detected
-        — Returns 400 Bad Request without a token instead of 401 Unauthorized.
-        — Course IDs are sequential integers; attacker can iterate the full catalogue.
-        — Fix: authenticate before course lookup; adopt UUID course identifiers.
       parameters:
         - name: id
           in: path
           required: true
-          description: "Course ID — sequential integer, enumerable"
           schema:
             type: integer
             example: 101
       responses:
-        "400":
-          description: "ACTUAL response — Bad Request returned instead of 401"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "200":
-          description: "Course data (expected only with valid auth)"
+          description: "Successful Response"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/CourseResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # (h) Broken Authentication — GET /loki/widget/v1/channels/settings
-  # ─────────────────────────────────────────────────────────────────────────────
   /loki/widget/v1/channels/settings:
     get:
       tags:
         - "Broken Authentication"
         - "Rate Limit Missing"
-      summary: "Get Channel Settings [FINDING h — Broken Auth, 400 vs 401]"
+      summary: "Get Channel Settings"
       operationId: "getChannelSettings"
-      description: |
-        FINDING (h): Broken Authentication Detected
-        — Returns 400 Bad Request without a token instead of 401 Unauthorized.
-        — Channel configuration data should never be accessible without auth.
-        — Fix: return 401 before any settings lookup.
       responses:
-        "400":
-          description: "ACTUAL response — Bad Request returned instead of 401"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
         "200":
-          description: "Channel settings (expected only with valid auth)"
+          description: "Successful Response"
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ChannelSettingsResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # (j) Enumerable Resource ID — /share endpoint
-  # ─────────────────────────────────────────────────────────────────────────────
   /api/v1/chats/share/{share_id}:
     get:
       tags:
         - "Enumerable Resource IDs"
         - "Rate Limit Missing"
-      summary: "Get Shared Chat [FINDING j — Enumerable share_id]"
+      summary: "Get Shared Chat"
       operationId: "getSharedChat"
-      description: |
-        FINDING (j): Enumerable Resource ID Detected on /share Endpoint
-        — share_id uses sequential integers (e.g. 1, 2, 3 …).
-        — An attacker can iterate all IDs to scrape the full shared-chat corpus.
-        — No rate limiting is applied to slow enumeration.
-        — Fix: use cryptographically random UUIDs; add rate limiting with 429 responses.
       parameters:
         - name: share_id
           in: path
           required: true
-          description: "Sequential integer ID — easily enumerable (VULNERABILITY)"
           schema:
             type: integer
             example: 12345
       responses:
         "200":
-          description: "Shared chat data accessible via predictable ID"
+          description: "Successful Response"
           content:
             application/json:
               schema:
@@ -426,32 +288,23 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
 
-  # ─────────────────────────────────────────────────────────────────────────────
-  # (k) Enumerable Resource ID — /ecommerce endpoint
-  # ─────────────────────────────────────────────────────────────────────────────
   /ecommerce/{id}:
     get:
       tags:
         - "Enumerable Resource IDs"
         - "Rate Limit Missing"
-      summary: "Get Ecommerce Resource [FINDING k — Enumerable integer ID]"
+      summary: "Get Ecommerce Resource"
       operationId: "getEcommerceResource"
-      description: |
-        FINDING (k): Enumerable Resource ID Detected on /ecommerce Endpoint
-        — Resource ID uses sequential integers.
-        — Attacker can enumerate all products/orders/users without any rate limiting.
-        — Fix: use UUIDs for resource identifiers; enforce rate limiting.
       parameters:
         - name: id
           in: path
           required: true
-          description: "Sequential integer — enumerable (VULNERABILITY)"
           schema:
             type: integer
             example: 1
       responses:
         "200":
-          description: "Ecommerce resource (accessible via sequential ID)"
+          description: "Successful Response"
           content:
             application/json:
               schema:
@@ -461,40 +314,29 @@ paths:
         "429":
           $ref: "#/components/responses/RateLimitExceeded"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Components
-# ─────────────────────────────────────────────────────────────────────────────
 components:
-
-  # No securitySchemes defined — auth stripped for 100% test execution
 
   headers:
     X-RateLimit-Limit:
-      description: "FINDING (l): MISSING — maximum requests allowed per window"
       schema:
         type: integer
         example: 100
     X-RateLimit-Remaining:
-      description: "FINDING (l): MISSING — requests remaining in current window"
       schema:
         type: integer
         example: 99
     X-RateLimit-Reset:
-      description: "FINDING (l): MISSING — Unix timestamp when the window resets"
       schema:
         type: integer
         example: 1715000000
     Retry-After:
-      description: "FINDING (l): MISSING — seconds to wait before retrying after 429"
       schema:
         type: integer
         example: 60
 
   responses:
     Unauthorized:
-      description: |
-        401 Unauthorized — EXPECTED response for auth-protected endpoints.
-        Currently broken: endpoints return 400 instead of this.
+      description: "401 Unauthorized"
       headers:
         WWW-Authenticate:
           schema:
@@ -504,9 +346,6 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
-          example:
-            detail: "Not authenticated"
-            code: 401
 
     BadRequest:
       description: "400 Bad Request"
@@ -521,15 +360,9 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
-          example:
-            detail: "Resource not found"
-            code: 404
 
     RateLimitExceeded:
-      description: |
-        429 Too Many Requests
-        FINDING (l): Rate Limit Missing — this response is not currently returned.
-        All endpoints are missing these required headers and the 429 response.
+      description: "429 Too Many Requests"
       headers:
         X-RateLimit-Limit:
           $ref: "#/components/headers/X-RateLimit-Limit"
@@ -573,9 +406,6 @@ components:
           type: string
         code:
           type: integer
-      example:
-        detail: "Bad Request"
-        code: 400
 
     GamificationResponse:
       type: object
@@ -688,7 +518,6 @@ components:
       properties:
         share_id:
           type: string
-          description: "Should be UUID, not integer (VULNERABILITY)"
         title:
           type: string
         messages:
@@ -707,7 +536,6 @@ components:
       properties:
         id:
           type: integer
-          description: "Sequential integer — enumerable (VULNERABILITY)"
         name:
           type: string
         price:
