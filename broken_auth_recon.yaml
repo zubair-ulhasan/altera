@@ -1,0 +1,105 @@
+openapi: "3.1.0"
+info:
+  title: "Broken Authentication - Recon Endpoints"
+  version: "1.0.0"
+
+servers:
+  - url: "/"
+
+security: []
+
+tags:
+  - name: "Broken Authentication"
+
+paths:
+
+  /api/config:
+    get:
+      tags:
+        - "Broken Authentication"
+      summary: "Get App Config"
+      operationId: "get_app_config_api_config_get"
+      responses:
+        "200":
+          description: "Successful Response"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  version:
+                    type: string
+                    description: "Open WebUI version string"
+                  auth_methods:
+                    type: array
+                    items:
+                      type: string
+                    description: "Enabled authentication methods"
+                  features:
+                    type: object
+                    additionalProperties: true
+                    description: "Map of enabled/disabled features"
+                  default_models:
+                    type: array
+                    items:
+                      type: string
+                  onboarding:
+                    type: boolean
+
+  /api/v1/memories/ef:
+    get:
+      tags:
+        - "Broken Authentication"
+      summary: "Get Embeddings"
+      operationId: "get_embeddings_api_v1_memories_ef_get"
+      responses:
+        "200":
+          description: "Successful Response"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: number
+                  format: float
+                description: "Stored memory embedding vectors from AI chat sessions"
+
+  /api/v1/retrieval/:
+    get:
+      tags:
+        - "Broken Authentication"
+      summary: "Get Retrieval Status"
+      operationId: "get_status_api_v1_retrieval__get"
+      responses:
+        "200":
+          description: "Successful Response"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  embedding_engine:
+                    type: string
+                    description: "Embedding service provider (e.g. azure_openai)"
+                  embedding_model:
+                    type: string
+                    description: "Exact embedding model name in use"
+                  reranking_model:
+                    type: string
+                    description: "Reranking model name (e.g. Cohere)"
+                  chunk_size:
+                    type: integer
+                  chunk_overlap:
+                    type: integer
+                  rag_template:
+                    type: string
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        code:
+          type: integer
